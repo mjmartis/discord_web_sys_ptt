@@ -1,0 +1,14 @@
+{
+  "name": "Discord System-Wide PTT",
+  "version": "1.0",
+  "description": "System-wide push-to-talk for the Discord web client on Chrome OS.",
+  "manifest_version": 2,
+  
+  "content_scripts": [
+    {
+      "matches": ["https://discord.com/*"],
+      "run_at": "document_start",
+      "js": ["content.js"]
+    }
+  ]
+}
