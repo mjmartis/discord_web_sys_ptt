@@ -38,7 +38,7 @@ window.localStorage.__proto__.setItem = (function() {
   return function(key, value) {
     if (key === 'MediaEngineStore') {
       const curShortcut = parseShortcut(value);
-      if (prevShortcut === null || !arraysEqual(curShortcut, prevShortcut)) {
+      if (!arraysEqual(curShortcut, prevShortcut)) {
         prevShortcut = curShortcut;
         document.dispatchEvent(new CustomEvent('SwpttShortcutChanged', {
           'detail': curShortcut
