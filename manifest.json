@@ -10,5 +10,7 @@
       "run_at": "document_start",
       "js": ["content.js"]
     }
-  ]
+  ],
+
+  "web_accessible_resources": [ "injected.js" ]
 }
