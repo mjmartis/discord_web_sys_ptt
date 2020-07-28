@@ -22,12 +22,19 @@ function parseShortcut(storageValue) {
   }
 }
 
-// Override method to notify us about local storage changes.
+// TODO: sometimes localStorage not available.
+
+// Override method to notify extension about local storage changes.
 window.localStorage.__proto__ = Object.create(Storage.prototype);
 window.localStorage.__proto__.setItem = (function() {
-  // Only notify about changes to shortcut.
-  let prevShortcut = null;
+  // Notify about initial PTT shortcut.
+  const initShortcut = parseShortcut(window.localStorage.getItem('MediaEngineStore'));
+  document.dispatchEvent(new CustomEvent('SwpttShortcutChanged', {
+    'detail': initShortcut
+  }));
 
+  // Then only notify about changes to shortcut.
+  let prevShortcut = initShortcut;
   return function(key, value) {
     if (key === 'MediaEngineStore') {
       const curShortcut = parseShortcut(value);
