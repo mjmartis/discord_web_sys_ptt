@@ -3,14 +3,27 @@
   "version": "1.0",
   "description": "System-wide push-to-talk for the Discord web client on Chrome OS.",
   "manifest_version": 2,
-  
-  "content_scripts": [
-    {
-      "matches": ["https://discord.com/*"],
-      "run_at": "document_start",
-      "js": ["content.js"]
-    }
-  ],
 
-  "web_accessible_resources": [ "injected.js" ]
+  "background": {
+    "scripts": ["background.js"]
+  },
+
+  "content_scripts": [{
+    "matches": ["https://discord.com/*"],
+    "run_at": "document_start",
+    "js": ["content.js"]
+  }],
+
+  "web_accessible_resources": ["injected.js"],
+
+  "permissions": ["input"],
+
+  "input_components": [{
+    "name": "Discord System-Wide PTT",
+    "type": "ime",
+    "id": "discord_sw_ptt",
+    "description": "Allows Discord web clients to respond to PTT shortcuts system-wide.",
+    "language": "en-US",
+    "layouts": ["us::eng"]
+  }]
 }
