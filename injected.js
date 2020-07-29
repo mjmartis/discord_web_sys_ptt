@@ -24,7 +24,7 @@ function parseShortcut(storageValue) {
         throw "unrecognised shortcut specification.";
       }
       return vs[1];
-    });
+    }).sort();
   } catch (err) {
     console.error('Couldn\'t parse PTT shortcut: ' + err);
     return -1;

@@ -6,7 +6,9 @@ injected.onload = function() {
 };
 (document.head || document.documentElement).appendChild(injected);
 
-// Listen for PTT shortcut changes.
+// Forward PTT shortcut updates from the page's environment to the background
+// script.
 document.addEventListener('SwpttShortcutChanged', function (ev) {
   console.debug('PTT Shortcut Changed: ' + ev.detail);
+  chrome.runtime.sendMessage({shortcut: ev.detail}, function(_) {});
 });
