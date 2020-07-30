@@ -9,7 +9,7 @@ function parseShortcut(storageValue) {
     const value = JSON.parse(storageValue).default;
 
     if (value.mode !== 'PUSH_TO_TALK' || !value.modeOptions.shortcut) {
-      return '';
+      return [];
     }
 
     // Return a list of key codes, from the list with entries of the form:
@@ -19,10 +19,10 @@ function parseShortcut(storageValue) {
         throw "unrecognised shortcut specification.";
       }
       return vs[1];
-    }).sort().join(',');
+    }).sort();
   } catch (err) {
     console.error('Couldn\'t parse PTT shortcut: ' + err);
-    return '';
+    return [];
   }
 }
 
@@ -33,7 +33,7 @@ window.localStorage.__proto__ = Object.create(Storage.prototype);
 window.localStorage.__proto__.setItem = (function() {
   // Notify about initial PTT shortcut.
   const initShortcut = parseShortcut(window.localStorage.getItem('MediaEngineStore'));
-  document.dispatchEvent(new CustomEvent('SwpttShortcutChanged', {
+  document.dispatchEvent(new CustomEvent('BwpttShortcutChanged', {
     'detail': initShortcut
   }));
 
@@ -44,7 +44,7 @@ window.localStorage.__proto__.setItem = (function() {
       const curShortcut = parseShortcut(value);
       if (curShortcut !== prevShortcut) {
         prevShortcut = curShortcut;
-        document.dispatchEvent(new CustomEvent('SwpttShortcutChanged', {
+        document.dispatchEvent(new CustomEvent('BwpttShortcutChanged', {
           'detail': curShortcut
         }));
       }
