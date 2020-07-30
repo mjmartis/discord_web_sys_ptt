@@ -23,7 +23,7 @@
     "type": "ime",
     "id": "discord_sw_ptt",
     "description": "Allows Discord web clients to respond to PTT shortcuts system-wide.",
-    "language": "en-US",
+    "language": "dd",
     "layouts": ["us::eng"]
   }]
 }

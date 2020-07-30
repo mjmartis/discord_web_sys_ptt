@@ -8,7 +8,17 @@ injected.onload = function() {
 
 // Forward PTT shortcut updates from the page's environment to the background
 // script.
-document.addEventListener('SwpttShortcutChanged', function (ev) {
+document.addEventListener('SwpttShortcutChanged', function(ev) {
   console.debug('PTT Shortcut Changed: ' + ev.detail);
-  chrome.runtime.sendMessage({shortcut: ev.detail}, function(_) {});
+  chrome.runtime.sendMessage({
+    shortcut: ev.detail
+  }, function(_) {});
+});
+
+// Forward key events from other contexts.
+chrome.runtime.onMessage.addListener(function(eventArgs, _, cb) {
+  const keyEvent = new KeyboardEvent(...eventArgs);
+  document.dispatchEvent(keyEvent);
+  console.log(eventArgs);
+  cb();
 });

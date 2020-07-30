@@ -118,13 +118,17 @@ let tabs = new Map();
 let shortcuts = new Map();
 
 let prevKeyCodes = null;
-let prevKeyEvent = null;
+let prevKeyArgs = null;
 
-// Compare two arrays of scalars.
-function arraysEqual(a1, a2) {
-  return a1.length === a2.length && a1.every(function(v, i) {
-    return v === a2[i]
-  });
+function forwardKeyEvent(keyArgs, keyCodes) {
+  if (!tabs.has(keyCodes)) {
+    return;
+  }
+
+  for (const tabId of tabs.get(keyCodes)) {
+    console.log('sending to tab ' + tabId);
+    chrome.tabs.sendMessage(tabId, keyArgs, () => {});
+  }
 }
 
 // Handle key presses from any context.
@@ -144,14 +148,14 @@ chrome.input.ime.onKeyEvent.addListener(function(_, key) {
   // Send exactly corresponding keyup event for the last seen keydown.
   if (key.type === 'keyup') {
     if (prevKeyCodes === null) {
-      return;
+      return false;
     }
 
-    prevKeyEvent.type = 'keyup';
-    // TODO send
+    prevKeyArgs[0] = 'keyup';
+    forwardKeyEvent(prevKeyArgs, prevKeyCodes);
     console.log('keyup ' + prevKeyCodes);
     prevKeyCodes = null;
-    prevKeyEvent = null;
+    prevKeyArgs = null;
     return false;
   }
 
@@ -163,7 +167,7 @@ chrome.input.ime.onKeyEvent.addListener(function(_, key) {
   }
 
   // Add in modifiers and format as expected by Discord.
-  curKeyCodes = [keyCode]
+  keyCodesList = [keyCode]
   for (const [pressed, modKeyCode] of [
       [key.shiftKey, 16],
       [key.ctrlKey, 17],
@@ -171,28 +175,36 @@ chrome.input.ime.onKeyEvent.addListener(function(_, key) {
       [key.capsKey, 20]
     ]) {
     if (pressed && modKeyCode != keyCode) {
-      curKeyCodes.push(modKeyCode);
+      keyCodesList.push(modKeyCode);
     }
   }
-  curKeyCodes.sort();
+  const curKeyCodes = keyCodesList.sort().join(',');
 
   if (prevKeyCodes !== null) {
     // Event is the same as last keydown: nothing to do.
-    if (arraysEqual(curKeyCodes, prevKeyCodes)) {
-      return;
+    if (curKeyCodes === prevKeyCodes) {
+      return false;
     }
 
     // Event is different from last keydown, so send exactly corresponding keyup.
     // Generate exactly corresponding keyup event for the last seen keydown.
-    prevKeyEvent.type = 'keyup';
-    // TODO send
+    prevKeyArgs[0] = 'keyup';
+    forwardKeyEvent(prevKeyArgs, prevKeyCodes);
     console.log('keyup ' + prevKeyCodes);
   }
-  prevKeyCodes = curKeyCodes;
-  prevKeyEvent = key;
 
-  console.log('keydown ' + curKeyCodes);
-  // TODO send
+  // Update previous key code and args.
+  prevKeyArgs = [key.type, {
+    keyCode: keyCode,
+    altKey: key.altKey,
+    ctrlKey: key.ctrlKey,
+    metaKey: key.metaKey,
+    shiftKey: key.shiftKey
+  }];
+  prevKeyCodes = curKeyCodes;
+
+  console.log('keydown ' + prevKeyCodes);
+  forwardKeyEvent(prevKeyArgs, prevKeyCodes);
 
   return false;
 });
@@ -212,6 +224,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, cb) {
   tabs.get(message.shortcut).push(sender.tab.id);
   shortcuts.set(sender.tab.id, message.shortcut);
   cb();
+  console.log('tab ' + sender.tab.id + ' added');
   return false;
 });
 

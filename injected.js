@@ -2,11 +2,6 @@
 const DISCORD_KEYBOARD = 0;
 const DISCORD_BROWSER = 4;
 
-// Compare two arrays of scalars.
-function arraysEqual(a1, a2) {
-  return a1.length === a2.length && a1.every(function(v, i) { return v === a2[i] });
-}
-
 // Parse and return the PTT shortcut from a serialized MediaEngineStore
 // structure.
 function parseShortcut(storageValue) {
@@ -14,7 +9,7 @@ function parseShortcut(storageValue) {
     const value = JSON.parse(storageValue).default;
 
     if (value.mode !== 'PUSH_TO_TALK' || !value.modeOptions.shortcut) {
-      return -1;
+      return '';
     }
 
     // Return a list of key codes, from the list with entries of the form:
@@ -24,10 +19,10 @@ function parseShortcut(storageValue) {
         throw "unrecognised shortcut specification.";
       }
       return vs[1];
-    }).sort();
+    }).sort().join(',');
   } catch (err) {
     console.error('Couldn\'t parse PTT shortcut: ' + err);
-    return -1;
+    return '';
   }
 }
 
@@ -47,7 +42,7 @@ window.localStorage.__proto__.setItem = (function() {
   return function(key, value) {
     if (key === 'MediaEngineStore') {
       const curShortcut = parseShortcut(value);
-      if (!arraysEqual(curShortcut, prevShortcut)) {
+      if (curShortcut !== prevShortcut) {
         prevShortcut = curShortcut;
         document.dispatchEvent(new CustomEvent('SwpttShortcutChanged', {
           'detail': curShortcut
