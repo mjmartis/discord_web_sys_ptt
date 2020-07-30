@@ -120,13 +120,14 @@ let shortcuts = new Map();
 let prevKeyCodes = null;
 let prevKeyArgs = null;
 
+// Send arguments for a key event to the tabs that are listening for the event.
 function forwardKeyEvent(keyArgs, keyCodes) {
   if (!tabs.has(keyCodes)) {
     return;
   }
 
   for (const tabId of tabs.get(keyCodes)) {
-    console.log('sending to tab ' + tabId);
+    console.log('sending ' + keyArgs[0] + ' to tab ' + tabId);
     chrome.tabs.sendMessage(tabId, keyArgs, () => {});
   }
 }
@@ -209,14 +210,43 @@ chrome.input.ime.onKeyEvent.addListener(function(_, key) {
   return false;
 });
 
+// Remove tab <-> shortcut mapping for the given tab, if one exists.
+function removeShortcutMapping(tabId) {
+  if (!shortcuts.has(tabId)) {
+    return;
+  }
+
+  const shortcut = shortcuts.get(tabId);
+  shortcuts.delete(tabId);
+
+  if (!tabs.has(shortcut)) {
+    console.debug('Inconsistent data: tab map missing key for ' +
+      'known shortcut ' + shortcut);
+    return;
+  }
+
+  const index = tabs.get(shortcut).indexOf(tabId);
+  if (index < 0) {
+    console.debug('Inconsistent data: tab map missing value for ' +
+      'known tab ' + tabId);
+    return;
+  }
+  tabs.get(shortcut).splice(index, 1);
+
+  console.log('Removed ' + tabId + ' from index ' + index +
+    ' of tab list for ' + shortcut);
+}
+
 // Track which Discord tabs have which PTT shortcuts.
-// TODO: clean up (potential) old shortcut data for this tab.
 // TODO: sort out callback usage.
 chrome.runtime.onMessage.addListener(function(message, sender, cb) {
   if (!sender.tab || !sender.tab.id) {
     cb();
     return false;
   }
+
+  // Potentially remove any previous (now-inaccurate) tab mapping.
+  removeShortcutMapping(sender.tab.id);
 
   if (!tabs.has(message.shortcut)) {
     tabs.set(message.shortcut, []);
@@ -228,4 +258,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, cb) {
   return false;
 });
 
-// TODO: clean up when relevant tab is closed, with chrome.tabs.onRemoved.
+// Automatically remove tab mapping on closed tabs.
+chrome.tabs.onRemoved.addListener(function(tabId, _) {
+  removeShortcutMapping(tabId);
+});
