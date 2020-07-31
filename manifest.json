@@ -4,6 +4,11 @@
 	"description": "Push-to-talk from any tab to the Discord web client.",
 	"manifest_version": 2,
 
+	"browser_action": {
+		"default_title": "Discord Browser-Wide PTT",
+		"default_popup": "popup.html"
+	},
+
 	"background": {
 		"scripts": ["background.js"]
 	},
@@ -23,5 +28,7 @@
 			},
 			"description": "Enable PTT for the Discord web client"
 		}
-	}
+	},
+
+	"permissions": ["storage"]
 }
