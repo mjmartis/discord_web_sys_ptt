@@ -5,7 +5,7 @@ let tabs = new Set();
 
 // Propogates the stored window value, or the default (if no value has been stored).
 function sendWindowValue(cb) {
-	chrome.storage.local.get(['windowValue'], function(result) {
+	chrome.storage.local.get('windowValue', function(result) {
 		cb('windowValue' in result ? result.windowValue : DEFAULT_WINDOW_VALUE);
 	});
 }
@@ -29,16 +29,25 @@ function onPopupLoaded(cb) {
 }
 
 // Called when the window value is changed.
-function onWindowChanged(windowValue, cb) {
+function onWindowChanged(windowValue) {
 	chrome.storage.local.set({
 		windowValue: windowValue
 	});
+
+	// Send message to all popups.
 	chrome.runtime.sendMessage({
 		id: 'window_changed',
 		value: windowValue
 	});
 
-	cb();
+	for (const id of tabs) {
+		// Send message to all Discord tabs.
+		chrome.tabs.sendMessage(id, {
+			id: 'window_changed',
+			value: windowValue
+		});
+	}
+
 	return false;
 }
 
@@ -49,11 +58,9 @@ chrome.runtime.onMessage.addListener(function(msg, sender, cb) {
 	} else if (msg.id === 'popup_loaded') {
 		return onPopupLoaded(cb);
 	} else if (msg.id === 'window_changed') {
-		console.log('background got window changed');
-		return onWindowChanged(msg.value, cb);
+		return onWindowChanged(msg.value);
 	}
-	
-	cb();
+
 	return false;
 });
 
@@ -67,6 +74,6 @@ chrome.commands.onCommand.addListener(function(_) {
 	for (const id of tabs) {
 		chrome.tabs.sendMessage(id, {
 			id: 'ext_shortcut'
-		}, () => {});
+		});
 	}
 });
