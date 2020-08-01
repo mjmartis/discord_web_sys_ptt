@@ -8,15 +8,13 @@ function onWindowValueChanged(windowValue) {
 }
 
 // Keep our window value in sync with all the others.
-chrome.runtime.onMessage.addListener(function(msg, _, cb) {
-  cb();
-
+chrome.runtime.onMessage.addListener(function(msg, _) {
   if (msg.id !== 'window_changed') {
     console.debug('Unexpected message "' + msg.id + '" received by popup.');
     return false;
   }
 
-  onWindowValueChanged(msg.value);
+  return onWindowValueChanged(msg.value);
   return false;
 });
 
@@ -30,6 +28,6 @@ chrome.runtime.sendMessage({
 slider.oninput = function() {
   chrome.runtime.sendMessage({
     id: 'window_changed',
-    value: this.value
-  }, () => {});
+    value: parseInt(this.value)
+  });
 }

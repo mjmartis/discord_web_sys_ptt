@@ -6,8 +6,9 @@ let tabs = new Set();
 // Propogates the stored window value, or the default (if no value has been stored).
 function sendWindowValue(cb) {
 	chrome.storage.local.get('windowValue', function(result) {
-		cb('windowValue' in result ? result.windowValue : DEFAULT_WINDOW_VALUE);
+		cb('windowValue' in result ? parseInt(result.windowValue) : DEFAULT_WINDOW_VALUE);
 	});
+  return true;
 }
 
 // Called when a Discord tab is loaded.
@@ -18,14 +19,7 @@ function onDiscordLoaded(sender, cb) {
 	}
 	tabs.add(sender.tab.id);
 
-	sendWindowValue(cb);
-	return true;
-}
-
-// Called when a popup is loaded.
-function onPopupLoaded(cb) {
-	sendWindowValue(cb);
-	return true;
+	return sendWindowValue(cb);
 }
 
 // Called when the window value is changed.
@@ -51,12 +45,12 @@ function onWindowChanged(windowValue) {
 	return false;
 }
 
-// TODO: sort out callback usage.
+// Handle messages from Discord tabs and popups.
 chrome.runtime.onMessage.addListener(function(msg, sender, cb) {
 	if (msg.id === 'discord_loaded') {
 		return onDiscordLoaded(sender, cb);
 	} else if (msg.id === 'popup_loaded') {
-		return onPopupLoaded(cb);
+	  return sendWindowValue(cb);
 	} else if (msg.id === 'window_changed') {
 		return onWindowChanged(msg.value);
 	}
