@@ -1,7 +1,7 @@
 {
 	"name": "Discord Browser-Wide PTT",
 	"version": "1.0",
-	"description": "Push-to-talk from any tab to the Discord web client.",
+	"description": "Push-to-talk from any tab with the Discord web client.",
 	"manifest_version": 2,
 
 	"browser_action": {

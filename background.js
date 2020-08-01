@@ -1,12 +1,12 @@
-let DEFAULT_WINDOW_VALUE = 800;
+let MIN_PTT_LENGTH_DEFAULT = 800;
 
 // TODO remove and make extension non-persistent.
 let tabs = new Set();
 
-// Propogates the stored window value, or the default (if no value has been stored).
-function sendWindowValue(cb) {
-	chrome.storage.local.get('windowValue', function(result) {
-		cb('windowValue' in result ? parseInt(result.windowValue) : DEFAULT_WINDOW_VALUE);
+// Propogates the stored min PTT length, or the default (if no value has been stored).
+function sendMinPttLength(cb) {
+	chrome.storage.local.get('minPttLength', function(result) {
+		cb('minPttLength' in result ? parseInt(result.minPttLength) : MIN_PTT_LENGTH_DEFAULT);
 	});
   return true;
 }
@@ -19,26 +19,26 @@ function onDiscordLoaded(sender, cb) {
 	}
 	tabs.add(sender.tab.id);
 
-	return sendWindowValue(cb);
+	return sendMinPttLength(cb);
 }
 
-// Called when the window value is changed.
-function onWindowChanged(windowValue) {
+// Called when the min PTT length is changed.
+function onMinPttLengthChanged(minPttLength) {
 	chrome.storage.local.set({
-		windowValue: windowValue
+		minPttLength: minPttLength
 	});
 
 	// Send message to all popups.
 	chrome.runtime.sendMessage({
-		id: 'window_changed',
-		value: windowValue
+		id: 'min_ptt_length_changed',
+		value: minPttLength
 	});
 
 	for (const id of tabs) {
 		// Send message to all Discord tabs.
 		chrome.tabs.sendMessage(id, {
-			id: 'window_changed',
-			value: windowValue
+			id: 'min_ptt_length_changed',
+			value: minPttLength
 		});
 	}
 
@@ -50,9 +50,9 @@ chrome.runtime.onMessage.addListener(function(msg, sender, cb) {
 	if (msg.id === 'discord_loaded') {
 		return onDiscordLoaded(sender, cb);
 	} else if (msg.id === 'popup_loaded') {
-	  return sendWindowValue(cb);
-	} else if (msg.id === 'window_changed') {
-		return onWindowChanged(msg.value);
+	  return sendMinPttLength(cb);
+	} else if (msg.id === 'min_ptt_length_changed') {
+		return onMinPttLengthChanged(msg.value);
 	}
 
 	return false;
@@ -67,7 +67,7 @@ chrome.tabs.onRemoved.addListener(function(id, _) {
 chrome.commands.onCommand.addListener(function(_) {
 	for (const id of tabs) {
 		chrome.tabs.sendMessage(id, {
-			id: 'ext_shortcut'
+			id: 'ext_shortcut_pushed'
 		});
 	}
 });

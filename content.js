@@ -1,4 +1,4 @@
-// The minimum number of ms to wait from initial shortcut message before ending PTT.
+// The default minimum number of ms to wait from initial shortcut message before ending PTT.
 const PTT_DELAY_FIRST_DEFAULT = 800;
 // The number of ms to wait from last shortcut message before ending PTT.
 const PTT_DELAY_LAST = 100;
@@ -89,9 +89,9 @@ function onExtShortcut() {
 
 // Respond to events from the background script.
 chrome.runtime.onMessage.addListener(function(msg, _) {
-  if (msg.id === 'ext_shortcut') {
+  if (msg.id === 'ext_shortcut_pushed') {
     return onExtShortcut();
-  } else if (msg.id === 'window_changed') {
+  } else if (msg.id === 'min_ptt_length_changed') {
     pttDelayFirst = msg.value;
     return false;
   }
@@ -102,6 +102,6 @@ chrome.runtime.onMessage.addListener(function(msg, _) {
 // Notify background script that we're a Discord tab.
 chrome.runtime.sendMessage({
   id: 'discord_loaded'
-}, function(windowValue) {
-  pttDelayFirst = windowValue;
+}, function(minPttLength) {
+  pttDelayFirst = minPttLength;
 });
