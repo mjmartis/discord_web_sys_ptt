@@ -1,34 +1,35 @@
 {
-	"name": "Discord Browser-Wide PTT",
-	"version": "1.0",
-	"description": "Push-to-talk from any tab with the Discord web client.",
-	"manifest_version": 2,
+  "name": "Discord Browser-Wide PTT",
+  "version": "1.0",
+  "description": "Push-to-talk from any tab with the Discord web client.",
+  "manifest_version": 2,
 
-	"browser_action": {
-		"default_title": "Discord Browser-Wide PTT",
-		"default_popup": "popup.html"
-	},
+  "browser_action": {
+    "default_title": "Discord Browser-Wide PTT",
+    "default_popup": "popup.html"
+  },
 
-	"background": {
-		"scripts": ["background.js"]
-	},
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
 
-	"content_scripts": [{
-		"matches": ["https://discord.com/*"],
-		"run_at": "document_start",
-		"js": ["content.js"]
-	}],
+  "content_scripts": [{
+    "matches": ["https://discord.com/*"],
+    "run_at": "document_start",
+    "js": ["content.js"]
+  }],
 
-	"web_accessible_resources": ["injected.js"],
+  "web_accessible_resources": ["injected.js"],
 
-	"commands": {
-		"ptt": {
-			"suggested_key": {
-				"default": "Ctrl+D"
-			},
-			"description": "Enable PTT for the Discord web client"
-		}
-	},
+  "commands": {
+    "ptt": {
+      "suggested_key": {
+        "default": "Ctrl+D"
+      },
+      "description": "Enable PTT for the Discord web client"
+    }
+  },
 
-	"permissions": ["storage"]
+  "permissions": ["storage"]
 }

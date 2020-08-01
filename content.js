@@ -6,10 +6,10 @@ const PTT_DELAY_LAST = 100;
 // A manually-constructed map from modifiers to their (likely) key codes. From
 // https://github.com/wesbos/keycodes/blob/gh-pages/scripts.js. 
 const MOD_KEY_CODES = [
-  ["shiftKey", 16],
-  ["ctrlKey", 17],
-  ["altKey", 18],
-  ["metaKey", 91],
+  ['shiftKey', 16],
+  ['ctrlKey', 17],
+  ['altKey', 18],
+  ['metaKey', 91],
 ];
 
 let pttDelayFirst = PTT_DELAY_FIRST_DEFAULT;
@@ -18,7 +18,7 @@ let keyInits = null;
 let toId = null;
 
 // Inject script to run in page's JS environment.
-const injected = document.createElement("script");
+const injected = document.createElement('script');
 injected.src = chrome.runtime.getURL('injected.js');
 injected.onload = function() {
   this.remove();
