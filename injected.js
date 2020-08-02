@@ -5,6 +5,12 @@ const DISCORD_BROWSER = 4;
 // Parse and return the PTT shortcut from a serialized MediaEngineStore
 // structure.
 function parseShortcut(storageValue) {
+  // There will be no MediaEngineStore entry on first usage of the Discord web
+  // client.
+  if (storageValue === null) {
+    return [];
+  }
+
   try {
     const value = JSON.parse(storageValue).default;
 
