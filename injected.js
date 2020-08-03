@@ -71,5 +71,5 @@ window.localStorage.__proto__.setItem = (function() {
     }
 
     Storage.prototype.setItem.apply(this, arguments);
-  }
+  };
 })();

@@ -13,7 +13,7 @@ const PTT_DELAY_LAST = 100;
 
 /**
  * A manually-constructed map from modifiers to their (likely) key codes. From
- * https://github.com/wesbos/keycodes/blob/gh-pages/scripts.js. 
+ * https://github.com/wesbos/keycodes/blob/gh-pages/scripts.js.
  * @const {!Array<!Array>}
  */
 const MOD_KEY_CODES = [
@@ -53,6 +53,7 @@ let toId = null;
 // Inject script to run in page's JS environment.
 const injected = document.createElement('script');
 injected.src = chrome.runtime.getURL('injected.js');
+/** Removes the injected script once it has executed. */
 injected.onload = function() {
   this.remove();
 };
@@ -87,7 +88,7 @@ document.addEventListener('BwpttShortcutChanged', function(ev) {
   keyEventInits['keyCode'] = keyCodeList.length > 0 ? keyCodeList[0] : lastModKeyCode;
 });
 
-// Sends a PTT keyup event. 
+/** Sends a PTT keyup event. */
 function pttOff() {
   pttEndTime = null;
 
@@ -96,8 +97,10 @@ function pttOff() {
   }
 }
 
-// Extends the PTT off timeout, and sends a PTT keydown event if one hasn't
-// been sent yet.
+/**
+ * Extends the PTT off timeout, and sends a PTT keydown event if one hasn't
+ * been sent yet.
+ */
 function onExtShortcut() {
   if (keyEventInits === null) return;
 

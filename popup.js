@@ -27,11 +27,13 @@ chrome.runtime.sendMessage({
   id: 'popup_loaded',
 }, onMinPttLengthChanged);
 
-// Update background (and subsequently all other popups) with new values from
-// this slider.
+/**
+ * Updates background script (and subsequently all other popups) with new
+ * values from this slider.
+ */
 slider.oninput = function() {
   chrome.runtime.sendMessage({
     id: 'min_ptt_length_changed',
     value: parseInt(this.value),
   });
-}
+};

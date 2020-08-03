@@ -4,7 +4,7 @@ let MIN_PTT_LENGTH_DEFAULT = 800;
  * Runs the given callback (which accepts an array of tab IDs) with the tab IDs
  * for loaded Discord tabs.
  *
- * @param {!function(!Array<number>)} cb - A callback that will be run on the
+ * @param {function(!Array<number>)} cb - A callback that will be run on the
  *     list of loaded Discord tab IDs.
  */
 function withDiscordTabs(cb) {
@@ -16,8 +16,9 @@ function withDiscordTabs(cb) {
 /**
  * Propogates the stored min PTT length, or the default (if no value has been stored).
  *
- * @param {!function(number)} cb - A callback that will be run with the stored
+ * @param {function(number)} cb - A callback that will be run with the stored
  *     min PTT length as its argument.
+ * @return {boolean} Whether or not cb is called asynchronously.
  */
 function sendMinPttLength(cb) {
   chrome.storage.local.get('minPttLength', function(result) {
@@ -32,7 +33,7 @@ function sendMinPttLength(cb) {
  *
  * @param {!Object} sender - The information about the tab which has loaded the
  *     Discord web client.
- * @param {!function(number)} - A callback which is passed the current minimum
+ * @param {function(number)} cb - A callback which is passed the current minimum
  *     PTT length.
  * @return {boolean} true if cb will be called asynchronously.
  */
