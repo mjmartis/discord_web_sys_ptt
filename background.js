@@ -26,7 +26,7 @@ function withDiscordTabs(cb) {
  */
 function sendMinPttLength(cb) {
   chrome.storage.local.get('minPttLength', function(result) {
-    cb('minPttLength' in result ? parseInt(result.minPttLength) : MIN_PTT_LENGTH_DEFAULT);
+    cb('minPttLength' in result ? result.minPttLength : MIN_PTT_LENGTH_DEFAULT);
   });
   return true;
 }
