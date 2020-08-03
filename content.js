@@ -1,10 +1,21 @@
-// The default minimum number of ms to wait from initial shortcut message before ending PTT.
+/**
+ * The default minimum number of ms to wait from initial shortcut message
+ * before ending PTT.
+ * @const {number}
+ */
 const PTT_DELAY_FIRST_DEFAULT = 800;
-// The number of ms to wait from last shortcut message before ending PTT.
+
+/**
+ * The number of ms to wait from last shortcut message before ending PTT.
+ * @const {number}
+ */
 const PTT_DELAY_LAST = 100;
 
-// A manually-constructed map from modifiers to their (likely) key codes. From
-// https://github.com/wesbos/keycodes/blob/gh-pages/scripts.js. 
+/**
+ * A manually-constructed map from modifiers to their (likely) key codes. From
+ * https://github.com/wesbos/keycodes/blob/gh-pages/scripts.js. 
+ * @const {!Array<!Array>}
+ */
 const MOD_KEY_CODES = [
   ['shiftKey', 16],
   ['ctrlKey', 17],
@@ -12,9 +23,31 @@ const MOD_KEY_CODES = [
   ['metaKey', 91],
 ];
 
+/**
+ * The minimum number of ms to wait from initial shortcut message before ending
+ * PTT.
+ * @type {number}
+ */
 let pttDelayFirst = PTT_DELAY_FIRST_DEFAULT;
+
+/**
+ * The time (in ms past the Unix epoch) at which the active PTT window should
+ * end, or null if there is no PTT window currently active.
+ * @type {?number}
+ */
 let pttEndTime = null;
-let keyInits = null;
+
+/**
+ * The key code and modifier statuses with which to construct syntheic PTT key
+ * up/down events for this tab.
+ * @type {?Object<string, (number|boolean)}
+ */
+let keyEventInits = null;
+
+/**
+ * The timeout ID for the active PTT window (if one exists).
+ * @type {?number}
+ */
 let toId = null;
 
 // Inject script to run in page's JS environment.
@@ -34,14 +67,12 @@ document.addEventListener('BwpttShortcutChanged', function(ev) {
     return;
   }
 
-  keyCodeList = ev.detail;
   keyEventInits = {};
-  lastModKeyCode = -1;
+  let keyCodeList = ev.detail;
+  let lastModKeyCode = -1;
   for ([mod, modKeyCode] of MOD_KEY_CODES) {
     const index = keyCodeList.indexOf(modKeyCode);
-    if (index === -1) {
-      continue;
-    }
+    if (index === -1) continue;
 
     keyCodeList.splice(index, 1);
     keyEventInits[mod] = true;
@@ -56,7 +87,7 @@ document.addEventListener('BwpttShortcutChanged', function(ev) {
   keyEventInits['keyCode'] = keyCodeList.length > 0 ? keyCodeList[0] : lastModKeyCode;
 });
 
-// Send a PTT keyup event. 
+// Sends a PTT keyup event. 
 function pttOff() {
   pttEndTime = null;
 
@@ -65,16 +96,13 @@ function pttOff() {
   }
 }
 
-// Extend the PTT off timeout, and send a PTT keydown event if one hasn't been
-// sent yet.
+// Extends the PTT off timeout, and sends a PTT keydown event if one hasn't
+// been sent yet.
 function onExtShortcut() {
-  if (keyEventInits === null) {
-    return false;
-  }
+  if (keyEventInits === null) return;
 
-  if (toId !== null) {
-    clearTimeout(toId);
-  }
+  if (toId !== null) clearTimeout(toId);
+
   const pttDelay = pttEndTime === null ?
     pttDelayFirst :
     Math.max(PTT_DELAY_LAST, pttEndTime - new Date().getTime());
@@ -84,16 +112,14 @@ function onExtShortcut() {
     pttEndTime = new Date().getTime() + pttDelayFirst;
     document.dispatchEvent(new KeyboardEvent('keydown', keyEventInits));
   }
-  return false;
 }
 
 // Respond to events from the background script.
-chrome.runtime.onMessage.addListener(function(msg, _) {
+chrome.runtime.onMessage.addListener(function(msg) {
   if (msg.id === 'ext_shortcut_pushed') {
-    return onExtShortcut();
+    onExtShortcut();
   } else if (msg.id === 'min_ptt_length_changed') {
     pttDelayFirst = msg.value;
-    return false;
   }
 
   return false;
@@ -101,7 +127,7 @@ chrome.runtime.onMessage.addListener(function(msg, _) {
 
 // Notify background script that we're a Discord tab.
 chrome.runtime.sendMessage({
-  id: 'discord_loaded'
-}, function(minPttLength) {
+  id: 'discord_loaded',
+}, minPttLength => {
   pttDelayFirst = minPttLength;
 });

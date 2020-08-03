@@ -1,7 +1,11 @@
 var slider = document.getElementById('slider');
 var label = document.getElementById('label');
 
-// Called when a new min PTT length is set from any popup.
+/**
+ * Sets the slider position and label to reflect a new min PTT length.
+ *
+ * @param {number} minPttLength - The new minimum PTT length.
+ */
 function onMinPttLengthChanged(minPttLength) {
   slider.value = minPttLength;
   label.innerHTML = minPttLength + 'ms';
@@ -17,9 +21,10 @@ chrome.runtime.onMessage.addListener(function(msg, _) {
   return onMinPttLengthChanged(msg.value);
 });
 
-// Request stored min PTT length from background script.
+// Request stored min PTT length from background script when this popup is
+// created.
 chrome.runtime.sendMessage({
-  id: 'popup_loaded'
+  id: 'popup_loaded',
 }, onMinPttLengthChanged);
 
 // Update background (and subsequently all other popups) with new values from
@@ -27,6 +32,6 @@ chrome.runtime.sendMessage({
 slider.oninput = function() {
   chrome.runtime.sendMessage({
     id: 'min_ptt_length_changed',
-    value: parseInt(this.value)
+    value: parseInt(this.value),
   });
 }
