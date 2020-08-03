@@ -1,4 +1,8 @@
-let MIN_PTT_LENGTH_DEFAULT = 800;
+/**
+ * The default minimum number of ms that any 'PTT active' window can last.
+ * @const {number}
+ */
+const MIN_PTT_LENGTH_DEFAULT = 800;
 
 /**
  * Runs the given callback (which accepts an array of tab IDs) with the tab IDs
