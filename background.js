@@ -22,7 +22,7 @@ function withDiscordTabs(cb) {
  *
  * @param {function(number)} cb - A callback that will be run with the stored
  *     min PTT length as its argument.
- * @return {boolean} Whether or not cb is called asynchronously.
+ * @return {boolean} true if cb will be called asynchronously.
  */
 function sendMinPttLength(cb) {
   chrome.storage.local.get('minPttLength', function(result) {
