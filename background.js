@@ -47,6 +47,11 @@ function onDiscordLoaded(sender, cb) {
     return false;
   }
 
+  // Update the badge text to show that PTT is active.
+  chrome.browserAction.setBadgeText({
+    text: 'ON',
+  });
+
   // Add tab to saved set of Discord tabs.
   withDiscordTabs(function(tabs) {
     const index = tabs.indexOf(sender.tab.id);
@@ -54,11 +59,6 @@ function onDiscordLoaded(sender, cb) {
 
     chrome.storage.local.set({
       tabs: [...tabs, sender.tab.id],
-    });
-
-    // Update the badge text to the new number of tracked tabs.
-    chrome.browserAction.setBadgeText({
-      text: (tabs.length + 1).toString(),
     });
   });
 
@@ -114,10 +114,12 @@ chrome.tabs.onRemoved.addListener(function(id) {
     if (index === -1) return;
     tabs.splice(index, 1);
 
-    // Set the badge text to the new number of tracked tabs.
-    chrome.browserAction.setBadgeText({
-      text: tabs.length > 0 ? tabs.length.toString() : '',
-    });
+    // Only keep badge text if there are open Discord tabs.
+    if (tabs.length == 0) {
+      chrome.browserAction.setBadgeText({
+        text: '',
+      });
+    }
 
     chrome.storage.local.set({
       tabs: tabs,
