@@ -17,12 +17,3 @@ To operate:
   4) (Optional) click the extension icon to tune your minimum PTT length. Due
      to Chrome extension shortcut architecture, too-short of a minimum PTT
      length might lead to PTT "bouncing".
-
-Known issues:
-
-  - Sometimes local storage (which is used to track Discord PTT keys) on a
-    Discord tab is not available to the extension. This is some type of race
-    condition: either the extension is attempting to access local storage before
-    it's loaded, or Discord is invalidating local storage before the extension
-    can hook into it. If browser-wide PTT is not working for a Discord tab, try
-    refreshing it to fix this issue.

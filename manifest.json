@@ -33,8 +33,6 @@
     "js": ["content.js"]
   }],
 
-  "web_accessible_resources": ["injected.js"],
-
   "commands": {
     "ptt": {
       "suggested_key": {
