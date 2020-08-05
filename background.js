@@ -55,6 +55,11 @@ function onDiscordLoaded(sender, cb) {
     chrome.storage.local.set({
       tabs: [...tabs, sender.tab.id],
     });
+
+    // Update the badge text to the new number of tracked tabs.
+    chrome.browserAction.setBadgeText({
+      text: (tabs.length + 1).toString(),
+    });
   });
 
   return sendMinPttLength(cb);
@@ -107,8 +112,13 @@ chrome.tabs.onRemoved.addListener(function(id) {
   withDiscordTabs(function(tabs) {
     const index = tabs.indexOf(id);
     if (index === -1) return;
-
     tabs.splice(index, 1);
+
+    // Set the badge text to the new number of tracked tabs.
+    chrome.browserAction.setBadgeText({
+      text: tabs.length > 0 ? tabs.length.toString() : '',
+    });
+
     chrome.storage.local.set({
       tabs: tabs,
     });
