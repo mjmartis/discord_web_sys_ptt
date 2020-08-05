@@ -35,30 +35,19 @@ function sendMinPttLength(cb) {
  * Keeps track of the given Discord tab and sends it the information required
  * to start accepting forwarded PTT shortcuts.
  *
- * @param {!Object} sender - The information about the tab which has loaded the
- *     Discord web client.
+ * @param {number} id - The ID of the tab which has loaded the Discord web client.
  * @param {function(number)} cb - A callback which is passed the current minimum
  *     PTT length.
  * @return {boolean} true if cb will be called asynchronously.
  */
-function onDiscordLoaded(sender, cb) {
-  if (sender.tab == null || sender.tab.id == null) {
-    cb(-1);
-    return false;
-  }
-
-  // Update the badge text to show that PTT is active.
-  chrome.browserAction.setBadgeText({
-    text: 'ON',
-  });
-
+function onDiscordLoaded(id, cb) {
   // Add tab to saved set of Discord tabs.
   withDiscordTabs(function(tabs) {
-    const index = tabs.indexOf(sender.tab.id);
+    const index = tabs.indexOf(id);
     if (index !== -1) return;
 
     chrome.storage.local.set({
-      tabs: [...tabs, sender.tab.id],
+      tabs: [...tabs, id],
     });
   });
 
@@ -93,14 +82,50 @@ function onMinPttLengthChanged(minPttLength) {
   });
 }
 
+/**
+ * Updates extension badge when a Discord tab starts / stops broadcasting.
+ *
+ * @param {number} id - The ID of the tab that has started or stopped broadcasting.
+ * @param {boolean} broadcasting - true if this is as notice that broadcasting
+ *     has started.
+ */
+function onBroadcastingNotice(id, broadcasting) {
+  chrome.storage.local.get('broadcastingTab', function(result) {
+    if (broadcasting) {
+      chrome.browserAction.setBadgeText({
+        text: 'ON',
+      });
+
+      chrome.storage.local.set({
+        broadcastingTab: id,
+      });
+    } else if (result.broadcastingTab === id) {
+      chrome.browserAction.setBadgeText({
+        text: '',
+      });
+
+      chrome.storage.local.set({
+        broadcastingTab: null,
+      });
+    }
+  });
+}
+
 // Handle messages from Discord tabs and popups.
 chrome.runtime.onMessage.addListener(function(msg, sender, cb) {
+  if (sender == null || sender.tab == null || sender.tab.id == null) {
+    return false;
+  }
+
   if (msg.id === 'discord_loaded') {
-    return onDiscordLoaded(sender, cb);
+    return onDiscordLoaded(sender.tab.id, cb);
   } else if (msg.id === 'popup_loaded') {
     return sendMinPttLength(cb);
   } else if (msg.id === 'min_ptt_length_changed') {
     onMinPttLengthChanged(msg.value);
+    return false;
+  } else if (msg.id === 'broadcasting') {
+    onBroadcastingNotice(sender.tab.id, msg.value);
     return false;
   }
 
@@ -114,16 +139,11 @@ chrome.tabs.onRemoved.addListener(function(id) {
     if (index === -1) return;
     tabs.splice(index, 1);
 
-    // Only keep badge text if there are open Discord tabs.
-    if (tabs.length == 0) {
-      chrome.browserAction.setBadgeText({
-        text: '',
-      });
-    }
-
     chrome.storage.local.set({
       tabs: tabs,
     });
+
+    onBroadcastingNotice(id, false);
   });
 });
 

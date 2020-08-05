@@ -23,7 +23,7 @@ const MOD_KEY_CODES = [
   ['metaKey', 91],
 ];
 
-const INJECTED_JS = String.raw`
+const INJECTED_JS = String.raw `
 /**
  * Value used to specify keyboard shortcuts in the Discord web client.
  * @const {number}
@@ -72,6 +72,28 @@ function parseShortcut(storageValue) {
   }
 }
 
+/**
+ * Parses and returns the broadcasting status from a serialized
+ * SelectedChannelStore structure.
+ *
+ * @param {?Object} storageValue - The string value associated with the
+ *     SelectedChannelStore key in local storage, or null if no such key exists
+ *     in local storage.
+ * @return {boolean} true if the current page is broadcasting the user's voice.
+ */
+function parseBroadcastingStatus(storageValue) {
+  if (storageValue == null) return false;
+  console.log(storageValue);
+
+  try {
+    const value = JSON.parse(storageValue);
+    return value.selectedVoiceChannelId != null && value.lastConnectedTime !== 0;
+  } catch (err) {
+    console.error('Couldn\'t parse broadcasting status: ' + err.message);
+    return false;
+  }
+}
+
 // Overrides method to notify extension about local storage changes.
 window.localStorage.__proto__ = Object.create(Storage.prototype);
 window.localStorage.__proto__.setItem = (function() {
@@ -81,7 +103,13 @@ window.localStorage.__proto__.setItem = (function() {
     'detail': initShortcut,
   }));
 
-  // Then only notify about changes to shortcut.
+  // Notify if the tab is immediately broadcasting.
+  document.dispatchEvent(new CustomEvent('BwpttBroadcasting', {
+    'detail': parseBroadcastingStatus(window.localStorage.getItem('SelectedChannelStore')),
+  }));
+
+  // Continue notifying about broadcast status, but only notify about changes
+  // to shortcut.
   let prevShortcut = initShortcut;
   return function(key, value) {
     if (key === 'MediaEngineStore') {
@@ -92,6 +120,10 @@ window.localStorage.__proto__.setItem = (function() {
           'detail': curShortcut,
         }));
       }
+    } else if (key === 'SelectedChannelStore') {
+      document.dispatchEvent(new CustomEvent('BwpttBroadcasting', {
+        'detail': parseBroadcastingStatus(value),
+      }));
     }
 
     Storage.prototype.setItem.apply(this, arguments);
@@ -128,8 +160,6 @@ let toId = null;
 
 // Listen for updates to page's PTT shortcut.
 document.addEventListener('BwpttShortcutChanged', function(ev) {
-  console.debug('PTT Shortcut Changed: ' + ev.detail);
-
   if (ev.detail === []) {
     keyEventInits = null;
     return;
@@ -153,6 +183,14 @@ document.addEventListener('BwpttShortcutChanged', function(ev) {
   }
 
   keyEventInits['keyCode'] = keyCodeList.length > 0 ? keyCodeList[0] : lastModKeyCode;
+});
+
+// Listen to changes in the page's broadcasting status.
+document.addEventListener('BwpttBroadcasting', function(ev) {
+  chrome.runtime.sendMessage({
+    id: 'broadcasting',
+    value: ev.detail,
+  });
 });
 
 /** Sends a PTT keyup event. */

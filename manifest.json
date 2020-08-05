@@ -28,7 +28,7 @@
   },
 
   "content_scripts": [{
-    "matches": ["https://discord.com/*"],
+    "matches": ["https://discord.com/channels/*"],
     "run_at": "document_start",
     "js": ["content.js"]
   }],
