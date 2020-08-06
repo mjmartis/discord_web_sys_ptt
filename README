@@ -1,7 +1,7 @@
 This Chrome extension allows the Discord web client "push to talk" (PTT) mode
 to operate from any tab in the browser (or system-wide). When cued with its own
-shortcut key combo, the extension emulates PTT keydown / keyup events in open
-Discord tabs.
+shortcut key combo, the extension emulates PTT keydown / keyup events in the
+Discord tab that is broadcasting voice.
 
 To operate:
   1) Install the extension in Chrome.
@@ -10,9 +10,9 @@ To operate:
      prefered PTT key combo. If you are not using Chrome OS, you may also set
      the shortcut to global to use it outside of a Chrome tab.
 
-  3) Reload Discord web client tabs, and enable PTT mode. The particular key
-     combo specified in your Discord web settings is not used and does not
-     matter.
+  3) Reload your Discord web client tab, and enable PTT mode. You must specify
+     some PTT key combo in your Discord web settings, but the particular combo
+     specified is not used and does not matter.
 
   4) (Optional) click the extension icon to tune your minimum PTT length. Due
      to Chrome extension shortcut architecture, too-short of a minimum PTT

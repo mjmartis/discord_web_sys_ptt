@@ -1,7 +1,7 @@
 {
-  "name": "Discord Browser-Wide PTT",
+  "name": "Discord System-Wide PTT",
   "version": "1.0",
-  "description": "Push-to-talk from any tab with the Discord web client.",
+  "description": "Push-to-talk from anywhere with the Discord web client.",
   "manifest_version": 2,
 
   "icons": {
@@ -12,7 +12,7 @@
   },
 
   "browser_action": {
-    "default_title": "Discord Browser-Wide PTT",
+    "default_title": "Discord System-Wide PTT",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "brw_ptt_16.png",
@@ -36,9 +36,9 @@
   "commands": {
     "ptt": {
       "suggested_key": {
-        "default": "Ctrl+D"
+        "default": "Ctrl+Space"
       },
-      "description": "Enable PTT for the Discord web client"
+      "description": "Toggle PTT in the Discord web client"
     }
   },
 
