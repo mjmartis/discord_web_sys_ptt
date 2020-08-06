@@ -97,31 +97,34 @@ function parseBroadcastingStatus(storageValue) {
 window.localStorage.__proto__ = Object.create(Storage.prototype);
 window.localStorage.__proto__.setItem = (function() {
   // Notify about initial PTT shortcut.
-  const initShortcut = parseShortcut(window.localStorage.getItem('MediaEngineStore'));
+  let prevShortcut = parseShortcut(window.localStorage.getItem('MediaEngineStore'));
   document.dispatchEvent(new CustomEvent('BwpttShortcutChanged', {
-    'detail': initShortcut,
+    'detail': prevShortcut,
   }));
 
   // Notify if the tab is immediately broadcasting.
+  let prevBroadcasting = parseBroadcastingStatus(
+      window.localStorage.getItem('SelectedChannelStore'));
   document.dispatchEvent(new CustomEvent('BwpttBroadcasting', {
-    'detail': parseBroadcastingStatus(window.localStorage.getItem('SelectedChannelStore')),
+    'detail': prevShortcut.length > 0 && prevBroadcasting,
   }));
 
-  // Continue notifying about broadcast status, but only notify about changes
-  // to shortcut.
-  let prevShortcut = initShortcut;
   return function(key, value) {
     if (key === 'MediaEngineStore') {
-      const curShortcut = parseShortcut(value);
-      if (curShortcut !== prevShortcut) {
-        prevShortcut = curShortcut;
-        document.dispatchEvent(new CustomEvent('BwpttShortcutChanged', {
-          'detail': curShortcut,
-        }));
-      }
-    } else if (key === 'SelectedChannelStore') {
+      prevShortcut = parseShortcut(value);
+
       document.dispatchEvent(new CustomEvent('BwpttBroadcasting', {
-        'detail': parseBroadcastingStatus(value),
+        'detail': prevShortcut.length > 0 && prevBroadcasting,
+      }));
+
+      document.dispatchEvent(new CustomEvent('BwpttShortcutChanged', {
+        'detail': prevShortcut,
+      }));
+    } else if (key === 'SelectedChannelStore') {
+      prevBroadcasting = parseBroadcastingStatus(value);
+
+      document.dispatchEvent(new CustomEvent('BwpttBroadcasting', {
+        'detail': prevShortcut.length > 0 && parseBroadcastingStatus(value),
       }));
     }
 
@@ -159,7 +162,7 @@ let toId = null;
 
 // Listen for updates to page's PTT shortcut.
 document.addEventListener('BwpttShortcutChanged', function(ev) {
-  if (ev.detail === []) {
+  if (ev.detail.length === 0) {
     keyEventInits = null;
     return;
   }
