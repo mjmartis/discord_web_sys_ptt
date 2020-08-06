@@ -5,15 +5,17 @@
 const MIN_PTT_LENGTH_DEFAULT = 800;
 
 /**
- * Runs the given callback (which accepts an array of tab IDs) with the tab IDs
- * for loaded Discord tabs.
+ * Runs the given callback with the tab ID for the broadcasting Discord tab, if
+ * one exists.
  *
- * @param {function(!Array<number>)} cb - A callback that will be run on the
- *     list of loaded Discord tab IDs.
+ * @param {function(number)} cb - A callback that will be run on the
+ *     broadcasting Discord tab ID.
  */
-function withDiscordTabs(cb) {
-  chrome.storage.local.get('tabs', function(result) {
-    cb('tabs' in result ? result.tabs : []);
+function withBroadcastingTab(cb) {
+  chrome.storage.local.get('broadcastingTab', function(result) {
+    if (result.broadcastingTab != null) {
+      cb(result.broadcastingTab);
+    }
   });
 }
 
@@ -26,32 +28,9 @@ function withDiscordTabs(cb) {
  */
 function sendMinPttLength(cb) {
   chrome.storage.local.get('minPttLength', function(result) {
-    cb('minPttLength' in result ? result.minPttLength : MIN_PTT_LENGTH_DEFAULT);
+    cb(result.minPttLength != null ? result.minPttLength : MIN_PTT_LENGTH_DEFAULT);
   });
   return true;
-}
-
-/**
- * Keeps track of the given Discord tab and sends it the information required
- * to start accepting forwarded PTT shortcuts.
- *
- * @param {number} id - The ID of the tab which has loaded the Discord web client.
- * @param {function(number)} cb - A callback which is passed the current minimum
- *     PTT length.
- * @return {boolean} true if cb will be called asynchronously.
- */
-function onDiscordLoaded(id, cb) {
-  // Add tab to saved set of Discord tabs.
-  withDiscordTabs(function(tabs) {
-    const index = tabs.indexOf(id);
-    if (index !== -1) return;
-
-    chrome.storage.local.set({
-      tabs: [...tabs, id],
-    });
-  });
-
-  return sendMinPttLength(cb);
 }
 
 /**
@@ -71,14 +50,12 @@ function onMinPttLengthChanged(minPttLength) {
     value: minPttLength,
   });
 
-  // Send message to all Discord tabs.
-  withDiscordTabs(function(tabs) {
-    for (const tab of tabs) {
-      chrome.tabs.sendMessage(tab, {
-        id: 'min_ptt_length_changed',
-        value: minPttLength,
-      });
-    }
+  // Send message to Discord tab.
+  withBroadcastingTab(function(id) {
+    chrome.tabs.sendMessage(id, {
+      id: 'min_ptt_length_changed',
+      value: minPttLength,
+    });
   });
 }
 
@@ -113,18 +90,13 @@ function onBroadcastingNotice(id, broadcasting) {
 
 // Handle messages from Discord tabs and popups.
 chrome.runtime.onMessage.addListener(function(msg, sender, cb) {
-  if (sender == null || sender.tab == null || sender.tab.id == null) {
-    return false;
-  }
-
-  if (msg.id === 'discord_loaded') {
-    return onDiscordLoaded(sender.tab.id, cb);
-  } else if (msg.id === 'popup_loaded') {
+  if (msg.id === 'discord_loaded' || msg.id === 'popup_loaded') {
     return sendMinPttLength(cb);
   } else if (msg.id === 'min_ptt_length_changed') {
     onMinPttLengthChanged(msg.value);
     return false;
-  } else if (msg.id === 'broadcasting') {
+  } else if (msg.id === 'broadcasting' && sender != null &&
+    sender.tab != null && sender.tab.id != null) {
     onBroadcastingNotice(sender.tab.id, msg.value);
     return false;
   }
@@ -132,28 +104,16 @@ chrome.runtime.onMessage.addListener(function(msg, sender, cb) {
   return false;
 });
 
-// Automatically remove tab mapping on closed tabs.
+// Automatically disable broadcasting on closed tabs.
 chrome.tabs.onRemoved.addListener(function(id) {
-  withDiscordTabs(function(tabs) {
-    const index = tabs.indexOf(id);
-    if (index === -1) return;
-    tabs.splice(index, 1);
-
-    chrome.storage.local.set({
-      tabs: tabs,
-    });
-
-    onBroadcastingNotice(id, false);
-  });
+  onBroadcastingNotice(id, false);
 });
 
-// When extension shortcut is pressed, notify Discord tabs.
+// When extension shortcut is pressed, notify Discord tab.
 chrome.commands.onCommand.addListener(function() {
-  withDiscordTabs(function(tabs) {
-    for (tab of tabs) {
-      chrome.tabs.sendMessage(tab, {
-        id: 'ext_shortcut_pushed',
-      });
-    }
+  withBroadcastingTab(function(id) {
+    chrome.tabs.sendMessage(id, {
+      id: 'ext_shortcut_pushed',
+    });
   });
 });

@@ -83,7 +83,6 @@ function parseShortcut(storageValue) {
  */
 function parseBroadcastingStatus(storageValue) {
   if (storageValue == null) return false;
-  console.log(storageValue);
 
   try {
     const value = JSON.parse(storageValue);
