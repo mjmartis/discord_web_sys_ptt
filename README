@@ -17,9 +17,3 @@ To operate:
   4) (Optional) click the extension icon to tune your minimum PTT length. Due
      to Chrome extension shortcut architecture, too-short of a minimum PTT
      length might lead to PTT "bouncing".
-
-Known issues:
-  - You must currently load Discord from a URL starting with
-    "https://discord.com/channels/". I am investigating the correct way to run
-    the extension script on Discord app tabs, but not other Discord tabs (e.g.
-    the login screen, developer docs).

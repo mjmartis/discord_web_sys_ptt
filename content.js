@@ -23,6 +23,15 @@ const MOD_KEY_CODES = [
   ['metaKey', 91],
 ];
 
+/**
+ * The list of URL prefixes that indicate the page is an instance of the Discord
+ * web app.
+ * @const {!Array<string>}
+ */
+const DISCORD_APP_URLS = [
+  'https://discord.com/app', 'https://discord.com/channels',
+];
+
 const INJECTED_JS = String.raw `
 /**
  * Value used to specify keyboard shortcuts in the Discord web client.
@@ -160,6 +169,22 @@ let keyEventInits = null;
  */
 let toId = null;
 
+/**
+ * Whether or not this page appears to be broadcasting PTT voice. This may be a
+ * false positive if the page is a non-app Discord page (e.g. Discord developer
+ * docs).
+ * @type {boolean}
+ */
+let broadcasting = false;
+
+/**
+ * Whether or not this page is a Discord web-app page. When this value is true,
+ * the broadcasting value should be transmitted to background script to keep the
+ * extension badge etc. updated.
+ * @type {boolean}
+ */
+let isDiscordApp = false;
+
 // Listen for updates to page's PTT shortcut.
 document.addEventListener('BwpttShortcutChanged', function(ev) {
   if (ev.detail.length === 0) {
@@ -189,10 +214,14 @@ document.addEventListener('BwpttShortcutChanged', function(ev) {
 
 // Listen to changes in the page's broadcasting status.
 document.addEventListener('BwpttBroadcasting', function(ev) {
-  chrome.runtime.sendMessage({
-    id: 'broadcasting',
-    value: ev.detail,
-  });
+  broadcasting = ev.detail;
+
+  if (isDiscordApp) {
+    chrome.runtime.sendMessage({
+      id: 'broadcasting',
+      value: broadcasting,
+    });
+  }
 });
 
 /** Sends a PTT keyup event. */
@@ -242,8 +271,43 @@ chrome.runtime.sendMessage({
   pttDelayFirst = minPttLength;
 });
 
+// Never broadcasting once the user navigates away.
+window.addEventListener('unload', function() {
+  broadcasting = false;
+  chrome.runtime.sendMessage({
+    id: 'broadcasting',
+    value: broadcasting,
+  });
+});
+
 // Inject script to run in page's JS environment.
 const injected = document.createElement('script');
 injected.textContent = INJECTED_JS;
 (document.head || document.documentElement).appendChild(injected);
 injected.remove();
+
+window.addEventListener('DOMContentLoaded', function() {
+  // The only comprehensive way I've found to track redirects is to watch
+  // mutations to the whole document body.
+  let observer = new MutationObserver(function(_, ob) {
+    isDiscordApp = DISCORD_APP_URLS.some(prefix =>
+      document.location.href.startsWith(prefix)
+    );
+
+    if (isDiscordApp) {
+      chrome.runtime.sendMessage({
+        id: 'broadcasting',
+        value: broadcasting,
+      });
+
+      // Prevent this callback from being called more than necessary (since
+      // body modifications are presumably frequent).
+      ob.disconnect();
+    }
+  });
+
+  observer.observe(document.querySelector('body'), {
+    childList: true,
+    subtree: true,
+  });
+});

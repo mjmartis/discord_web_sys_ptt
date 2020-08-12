@@ -104,11 +104,6 @@ chrome.runtime.onMessage.addListener(function(msg, sender, cb) {
   return false;
 });
 
-// Automatically disable broadcasting on closed tabs.
-chrome.tabs.onRemoved.addListener(function(id) {
-  onBroadcastingNotice(id, false);
-});
-
 // When extension shortcut is pressed, notify Discord tab.
 chrome.commands.onCommand.addListener(function() {
   withBroadcastingTab(function(id) {
