@@ -1,6 +1,6 @@
 {
   "name": "Discord System-Wide PTT",
-  "version": "0.1",
+  "version": "0.2",
   "description": "Push-to-talk from anywhere with the Discord web client.",
   "manifest_version": 2,
 
