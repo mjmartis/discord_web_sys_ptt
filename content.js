@@ -9,7 +9,7 @@ const PTT_DELAY_FIRST_DEFAULT = 800;
  * The number of ms to wait from last shortcut message before ending PTT.
  * @const {number}
  */
-const PTT_DELAY_LAST = 100;
+const PTT_DELAY_LAST = 300;
 
 /**
  * A manually-constructed map from modifiers to their (likely) key codes. From
