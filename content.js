@@ -205,11 +205,12 @@ function installBroadcastingBadgeHook() {
   let wasBroadcasting = false;
 
   setInterval(() => {
-    const isBroadcasting = parseBroadcastingStatus(
-      window.localStorage.getItem("SelectedChannelStore"),
-    );
+    const isBroadcasting =
+      isDiscordApp() &&
+      parseBroadcastingStatus(window.localStorage.getItem("SelectedChannelStore")) &&
+      getKeyEventParams() != null;
 
-    if (!isDiscordApp() || isBroadcasting === wasBroadcasting) {
+    if (isBroadcasting === wasBroadcasting) {
       return;
     }
 
