@@ -15,12 +15,15 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": [
+        "https://discordapp.com/*",
+        "https://discord.com/*"
+      ],
       "js": ["content.js"],
       "run_at": "document_start"
     }
   ],
-  "permissions": ["scripting"],
+  "permissions": [],
   "commands": {
     "dswptt_cmd": {
       "suggested_key": {
