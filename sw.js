@@ -5,7 +5,7 @@ chrome.commands.onCommand.addListener(async (command) => {
   }
 
   chrome.tabs.query({}, (tabs) =>
-    tabs.forEach((tab) => chrome.tabs.sendMessage(tab.id, { action: "dswptt_ptt" })),
+    tabs.forEach((tab) => chrome.tabs.sendMessage(tab.id, { action: "dswptt_ptt_extend" })),
   );
 });
 
@@ -13,9 +13,9 @@ chrome.commands.onCommand.addListener(async (command) => {
 chrome.action.setBadgeBackgroundColor({ color: "#EB3434" });
 chrome.action.setBadgeTextColor({ color: "#FFFFFF" });
 chrome.runtime.onMessage.addListener((message) => {
-  if (message.action !== "dswptt_broadcasting") {
+  if (message.action !== "dswptt_ptt_active") {
     return;
   }
 
-  chrome.action.setBadgeText({ text: message.isBroadcasting ? "ON" : "" });
+  chrome.action.setBadgeText({ text: message.status ? "ON" : "" });
 });

@@ -1,8 +1,8 @@
 /**
- * The number of milliseconds to wait between polls of the broadcasting status.
+ * The number of milliseconds to wait between polls of the PTT key settings.
  * @const {number}
  */
-const BROADCASTING_INTERVAL_MS = 2000;
+const PTT_KEY_INTERVAL_MS = 3000;
 
 /**
  * The initial number of milliseconds to wait before sending a keyup event. Is longer than
@@ -169,10 +169,13 @@ function isBroadcasting() {
 function installPttHook() {
   let endPttTimeoutId = null;
 
-  chrome.runtime.onMessage.addListener((message) => {
-    const keyEventParams = getKeyEventParams();
+  // Only periodically refresh PTT key information, since command messages are sent hundreds of
+  // times while the shortcut is held.
+  let keyEventParams = getKeyEventParams();
+  setInterval(() => { keyEventParams = getKeyEventParams(); }, PTT_KEY_INTERVAL_MS);
 
-    if (message.action !== "dswptt_ptt" || !isBroadcasting() || keyEventParams == null) {
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.action !== "dswptt_ptt_extend" || !isBroadcasting() || keyEventParams == null) {
       return;
     }
 
@@ -182,6 +185,11 @@ function installPttHook() {
     if (endPttTimeoutId !== null) {
       clearTimeout(endPttTimeoutId);
       timeoutMs = PTT_ACTIVE_INTERVAL_MS;
+    } else {
+      chrome.runtime.sendMessage({
+        action: "dswptt_ptt_active",
+        status: true,
+      });
     }
 
     (document || document.activeElement).dispatchEvent(
@@ -192,50 +200,30 @@ function installPttHook() {
       (document || document.activeElement).dispatchEvent(
         new KeyboardEvent("keyup", keyEventParams),
       );
+      chrome.runtime.sendMessage({
+        action: "dswptt_ptt_active",
+        status: false,
+      });
       endPttTimeoutId = null;
     }, timeoutMs);
   });
 }
 
-/**
- * Starts regularly polling Discord local storage to determine if the user is broadcasting their
- * voice, and notifies the background script when the status changes.
- */
-function installBroadcastingBadgeHook() {
-  let wasBroadcasting = false;
-
-  setInterval(() => {
-    const isBroadcasting =
-      isDiscordApp() &&
-      parseBroadcastingStatus(window.localStorage.getItem("SelectedChannelStore")) &&
-      getKeyEventParams() != null;
-
-    if (isBroadcasting === wasBroadcasting) {
-      return;
-    }
-
-    chrome.runtime.sendMessage({
-      action: "dswptt_broadcasting",
-      isBroadcasting,
-    });
-    wasBroadcasting = isBroadcasting;
-  }, BROADCASTING_INTERVAL_MS);
-
-  // Never broadcasting once the user navigates away.
+/** Notifies the background script that speaking has ended when page is navigated away. */
+function installPttStopHook() {
   window.addEventListener("unload", function () {
-    if (!wasBroadcasting) {
+    if (!isBroadcasting()) {
       return;
     }
 
     chrome.runtime.sendMessage({
-      action: "dswptt_broadcasting",
-      isBroadcasting: false,
+      action: "dswptt_ptt_active",
+      status: false,
     });
-    wasBroadcasting = false;
   });
 }
 
 // Actual entrypoint. Run when document is loaded.
 
 installPttHook();
-installBroadcastingBadgeHook();
+installPttStopHook();
