@@ -1,49 +1,33 @@
 {
   "name": "Discord System-Wide PTT",
-  "version": "0.2",
+  "version": "1.0",
   "description": "Push-to-talk from anywhere with the Discord web client.",
-  "manifest_version": 2,
-
+  "manifest_version": 3,
   "icons": {
     "16": "brw_ptt_16.png",
     "32": "brw_ptt_32.png",
     "48": "brw_ptt_48.png",
     "128": "brw_ptt_128.png"
   },
-
-  "browser_action": {
-    "default_title": "Discord System-Wide PTT",
-    "default_popup": "popup.html",
-    "default_icon": {
-      "16": "brw_ptt_16.png",
-      "32": "brw_ptt_32.png",
-      "48": "brw_ptt_48.png",
-      "128": "brw_ptt_128.png"
-    }
-  },
-
   "background": {
-    "scripts": ["background.js"],
-    "persistent": false
+    "service_worker": "sw.js",
+    "type": "module"
   },
-
-  "content_scripts": [{
-    "matches": [
-      "https://discordapp.com/*",
-      "https://discord.com/*"
-    ],
-    "run_at": "document_start",
-    "js": ["content.js"]
-  }],
-
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "permissions": ["scripting"],
   "commands": {
-    "ptt": {
+    "dswptt_cmd": {
       "suggested_key": {
         "default": "Ctrl+Space"
       },
       "description": "Toggle PTT in the Discord web client"
     }
   },
-
-  "permissions": ["storage"]
+  "action": {}
 }

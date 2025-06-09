@@ -1,15 +1,22 @@
 /**
- * The default minimum number of ms to wait from initial shortcut message
- * before ending PTT.
+ * The number of milliseconds to wait between polls of the broadcasting status.
  * @const {number}
  */
-const PTT_DELAY_FIRST_DEFAULT = 800;
+const BROADCASTING_INTERVAL_MS = 2000;
 
 /**
- * The number of ms to wait from last shortcut message before ending PTT.
+ * The initial number of milliseconds to wait before sending a keyup event. Is longer than
+ * subsequent waits because the OS or browser briefly "debounces" the shortcut when it is
+ * initially pressed.
  * @const {number}
  */
-const PTT_DELAY_LAST = 300;
+const PTT_INITIAL_INTERVAL_MS = 1000;
+
+/**
+ * The number of milliseconds to wait between subsequent key events when PTT is active.
+ * @const {number}
+ */
+const PTT_ACTIVE_INTERVAL_MS = 500;
 
 /**
  * A manually-constructed map from modifiers to their (likely) key codes. From
@@ -17,22 +24,18 @@ const PTT_DELAY_LAST = 300;
  * @const {!Array<!Array>}
  */
 const MOD_KEY_CODES = [
-  ['shiftKey', 16],
-  ['ctrlKey', 17],
-  ['altKey', 18],
-  ['metaKey', 91],
+  ["shiftKey", 16],
+  ["ctrlKey", 17],
+  ["altKey", 18],
+  ["metaKey", 91],
 ];
 
 /**
- * The list of URL prefixes that indicate the page is an instance of the Discord
- * web app.
+ * The list of URL prefixes that indicate the page is an instance of the Discord web app.
  * @const {!Array<string>}
  */
-const DISCORD_APP_URLS = [
-  'https://discord.com/app', 'https://discord.com/channels',
-];
+const DISCORD_APP_URLS = ["https://discord.com/app", "https://discord.com/channels"];
 
-const INJECTED_JS = String.raw `
 /**
  * Value used to specify keyboard shortcuts in the Discord web client.
  * @const {number}
@@ -46,268 +49,192 @@ const DISCORD_KEYBOARD = 0;
 const DISCORD_BROWSER = 4;
 
 /**
- * Parses and returns the PTT shortcut from a serialized MediaEngineStore
- * structure.
+ * Returns true if the current page is an instance of the Discord web app.
  *
- * @param {?Object} storageValue - The string value associated with the
- *     MediaEngineStore key in local storage, or null if no such key exists in
- *     local storage.
- * @return {!Array<number>} The list of key codes specified as the PTT shortcut
- *     in the MediaEngineStore structure, or an empty list if PTT is not
- *     enabled or there was an error.
+ * Required because Discord often redirects users from a non-app page to the app.
+ *
+ * @returns {boolean} True if the current page is an instance of the Discord web app.
+ */
+function isDiscordApp() {
+  return DISCORD_APP_URLS.some((url) => window.location.href.startsWith(url));
+}
+
+/**
+ * Parses and returns the PTT shortcut from a serialized MediaEngineStore structure.
+ *
+ * @param {?Object} storageValue - The string value associated with the MediaEngineStore key in
+ *     local storage, or null if no such key exists.
+ * @return {!Array<number>} The list of key codes specified as the PTT shortcut in the
+ *     MediaEngineStore structure, or an empty list if PTT is not enabled or there was an error.
  */
 function parseShortcut(storageValue) {
-  // There will be no MediaEngineStore entry on first usage of the Discord web
-  // client.
-  if (storageValue == null) return [];
+  // There will be no MediaEngineStore entry on first usage of the Discord web client.
+  if (storageValue == null) {
+    return [];
+  }
 
   try {
     const value = JSON.parse(storageValue).default;
-    if (value.mode !== 'PUSH_TO_TALK') {
+    if (value.mode !== "PUSH_TO_TALK") {
       return [];
     }
 
     // Return a list of key codes, from the list with entries of the form:
     //   [KEYBOARD, key code, BROWSER].
-    return value.modeOptions.shortcut.map(function(vs) {
-      if (vs.length != 3 || vs[0] != DISCORD_KEYBOARD || vs[2] != DISCORD_BROWSER) {
-        throw new Error("unrecognised shortcut specification.");
-      }
-      return vs[1];
-    }).sort();
+    return value.modeOptions.shortcut
+      .map((vs) => {
+        if (vs.length !== 3 || vs[0] !== DISCORD_KEYBOARD || vs[2] !== DISCORD_BROWSER) {
+          throw new Error("Unrecognised shortcut specification.");
+        }
+        return vs[1];
+      })
+      .sort();
   } catch (err) {
-    console.error('Couldn\'t parse PTT shortcut: ' + err.message);
+    console.error("Couldn't parse PTT shortcut: " + err.message);
     return [];
   }
 }
 
 /**
- * Parses and returns the broadcasting status from a serialized
- * SelectedChannelStore structure.
+ * Reads Discord PTT shortcut information from local storage and constructs the corresponding key
+ * event parameters to press/unpress it.
  *
- * @param {?Object} storageValue - The string value associated with the
- *     SelectedChannelStore key in local storage, or null if no such key exists
- *     in local storage.
- * @return {boolean} true if the current page is broadcasting the user's voice.
+ * @returns {?Object} The parameters for a key event that will trigger the PTT shortcut, or null if
+ *     the PTT shortcut is not enabled.
  */
-function parseBroadcastingStatus(storageValue) {
-  if (storageValue == null) return false;
+function getKeyEventParams() {
+  const keyCodeList = parseShortcut(window.localStorage.getItem("MediaEngineStore"));
 
-  try {
-    const value = JSON.parse(storageValue);
-    return value.selectedVoiceChannelId != null && value.lastConnectedTime !== 0;
-  } catch (err) {
-    console.error('Couldn\'t parse broadcasting status: ' + err.message);
-    return false;
-  }
-}
-
-// Overrides method to notify extension about local storage changes.
-window.localStorage.__proto__ = Object.create(Storage.prototype);
-window.localStorage.__proto__.setItem = (function() {
-  // Notify about initial PTT shortcut.
-  let prevShortcut = parseShortcut(window.localStorage.getItem('MediaEngineStore'));
-  document.dispatchEvent(new CustomEvent('BwpttShortcutChanged', {
-    'detail': prevShortcut,
-  }));
-
-  // Notify if the tab is immediately broadcasting.
-  let prevBroadcasting = parseBroadcastingStatus(
-      window.localStorage.getItem('SelectedChannelStore'));
-  document.dispatchEvent(new CustomEvent('BwpttBroadcasting', {
-    'detail': prevShortcut.length > 0 && prevBroadcasting,
-  }));
-
-  return function(key, value) {
-    if (key === 'MediaEngineStore') {
-      prevShortcut = parseShortcut(value);
-
-      document.dispatchEvent(new CustomEvent('BwpttBroadcasting', {
-        'detail': prevShortcut.length > 0 && prevBroadcasting,
-      }));
-
-      document.dispatchEvent(new CustomEvent('BwpttShortcutChanged', {
-        'detail': prevShortcut,
-      }));
-    } else if (key === 'SelectedChannelStore') {
-      prevBroadcasting = parseBroadcastingStatus(value);
-
-      document.dispatchEvent(new CustomEvent('BwpttBroadcasting', {
-        'detail': prevShortcut.length > 0 && parseBroadcastingStatus(value),
-      }));
-    }
-
-    Storage.prototype.setItem.apply(this, arguments);
-  };
-})();
-`;
-
-/**
- * The minimum number of ms to wait from initial shortcut message before ending
- * PTT.
- * @type {number}
- */
-let pttDelayFirst = PTT_DELAY_FIRST_DEFAULT;
-
-/**
- * The time (in ms past the Unix epoch) at which the active PTT window should
- * end, or null if there is no PTT window currently active.
- * @type {?number}
- */
-let pttEndTime = null;
-
-/**
- * The key code and modifier statuses with which to construct syntheic PTT key
- * up/down events for this tab.
- * @type {?Object<string, (number|boolean)}
- */
-let keyEventInits = null;
-
-/**
- * The timeout ID for the active PTT window (if one exists).
- * @type {?number}
- */
-let toId = null;
-
-/**
- * Whether or not this page appears to be broadcasting PTT voice. This may be a
- * false positive if the page is a non-app Discord page (e.g. Discord developer
- * docs).
- * @type {boolean}
- */
-let broadcasting = false;
-
-/**
- * Whether or not this page is a Discord web-app page. When this value is true,
- * the broadcasting value should be transmitted to background script to keep the
- * extension badge etc. updated.
- * @type {boolean}
- */
-let isDiscordApp = false;
-
-// Listen for updates to page's PTT shortcut.
-document.addEventListener('BwpttShortcutChanged', function(ev) {
-  if (ev.detail.length === 0) {
-    keyEventInits = null;
-    return;
+  if (keyCodeList.length === 0) {
+    return null;
   }
 
-  keyEventInits = {};
-  let keyCodeList = ev.detail;
   let lastModKeyCode = -1;
+  const keyEventParams = {};
   for ([mod, modKeyCode] of MOD_KEY_CODES) {
     const index = keyCodeList.indexOf(modKeyCode);
     if (index === -1) continue;
 
     keyCodeList.splice(index, 1);
-    keyEventInits[mod] = true;
+    keyEventParams[mod] = true;
     lastModKeyCode = modKeyCode;
   }
 
   if (keyCodeList.length > 1) {
-    console.debug('Unknown mod key present: key code ' + keyCodeList);
-    return;
+    console.debug("Unknown mod key present: key code " + keyCodeList);
+    return null;
   }
 
-  keyEventInits['keyCode'] = keyCodeList.length > 0 ? keyCodeList[0] : lastModKeyCode;
-});
+  keyEventParams["keyCode"] = keyCodeList.length > 0 ? keyCodeList[0] : lastModKeyCode;
+  return keyEventParams;
+}
 
-// Listen to changes in the page's broadcasting status.
-document.addEventListener('BwpttBroadcasting', function(ev) {
-  broadcasting = ev.detail;
-
-  if (isDiscordApp) {
-    chrome.runtime.sendMessage({
-      id: 'broadcasting',
-      value: broadcasting,
-    });
+/**
+ * Parses and returns the broadcasting status from a serialized SelectedChannelStore structure.
+ *
+ * @param {?Object} storageValue - The string value associated with the SelectedChannelStore key in
+ *     local storage, or null if no such key exists in local storage.
+ * @return {boolean} True if the current page is broadcasting the user's voice.
+ */
+function parseBroadcastingStatus(storageValue) {
+  if (storageValue == null) {
+    return false;
   }
-});
 
-/** Sends a PTT keyup event. */
-function pttOff() {
-  pttEndTime = null;
-
-  if (keyEventInits !== null) {
-    document.dispatchEvent(new KeyboardEvent('keyup', keyEventInits));
+  try {
+    const value = JSON.parse(storageValue);
+    return value.selectedVoiceChannelId != null && value.lastConnectedTime !== 0;
+  } catch (err) {
+    console.error("Couldn't parse broadcasting status: " + err.message);
+    return false;
   }
 }
 
 /**
- * Extends the PTT off timeout, and sends a PTT keydown event if one hasn't
- * been sent yet.
+ * Reads from Discord local storage to determine if the user is currently broadcasting their voice.
+ *
+ * @returns {boolean} True if the current page is broadcasting the user's voice.
  */
-function onExtShortcut() {
-  if (keyEventInits === null) return;
-
-  if (toId !== null) clearTimeout(toId);
-
-  const pttDelay = pttEndTime === null ?
-    pttDelayFirst :
-    Math.max(PTT_DELAY_LAST, pttEndTime - new Date().getTime());
-  toId = setTimeout(pttOff, pttDelay);
-
-  if (pttEndTime === null) {
-    pttEndTime = new Date().getTime() + pttDelayFirst;
-    document.dispatchEvent(new KeyboardEvent('keydown', keyEventInits));
-  }
+function isBroadcasting() {
+  return (
+    isDiscordApp() && parseBroadcastingStatus(window.localStorage.getItem("SelectedChannelStore"))
+  );
 }
 
-// Respond to events from the background script.
-chrome.runtime.onMessage.addListener(function(msg) {
-  if (msg.id === 'ext_shortcut_pushed') {
-    onExtShortcut();
-  } else if (msg.id === 'min_ptt_length_changed') {
-    pttDelayFirst = msg.value;
-  }
+/**
+ * Starts listening for "extend PTT" messages from the background script. Emulates a button press
+ * when receiving such a message, and schedules a later button release unless further messages are
+ * received.
+ */
+function installPttHook() {
+  let endPttTimeoutId = null;
 
-  return false;
-});
+  chrome.runtime.onMessage.addListener((message) => {
+    const keyEventParams = getKeyEventParams();
 
-// Notify background script that we're a Discord tab.
-chrome.runtime.sendMessage({
-  id: 'discord_loaded',
-}, minPttLength => {
-  pttDelayFirst = minPttLength;
-});
+    if (message.action !== "dswptt_ptt" || !isBroadcasting() || keyEventParams == null) {
+      return;
+    }
 
-// Never broadcasting once the user navigates away.
-window.addEventListener('unload', function() {
-  broadcasting = false;
-  chrome.runtime.sendMessage({
-    id: 'broadcasting',
-    value: broadcasting,
-  });
-});
+    // Use a separate timeout to handle the longer initial delay between shortcut messages that
+    // the OS or browser introduces presumably as a kind of debounce mechanism.
+    let timeoutMs = PTT_INITIAL_INTERVAL_MS;
+    if (endPttTimeoutId !== null) {
+      clearTimeout(endPttTimeoutId);
+      timeoutMs = PTT_ACTIVE_INTERVAL_MS;
+    }
 
-// Inject script to run in page's JS environment.
-const injected = document.createElement('script');
-injected.textContent = INJECTED_JS;
-(document.head || document.documentElement).appendChild(injected);
-injected.remove();
-
-window.addEventListener('DOMContentLoaded', function() {
-  // The only comprehensive way I've found to track redirects is to watch
-  // mutations to the whole document body.
-  let observer = new MutationObserver(function(_, ob) {
-    isDiscordApp = DISCORD_APP_URLS.some(prefix =>
-      document.location.href.startsWith(prefix)
+    (document || document.activeElement).dispatchEvent(
+      new KeyboardEvent("keydown", keyEventParams),
     );
 
-    if (isDiscordApp) {
-      chrome.runtime.sendMessage({
-        id: 'broadcasting',
-        value: broadcasting,
-      });
+    endPttTimeoutId = setTimeout(() => {
+      (document || document.activeElement).dispatchEvent(
+        new KeyboardEvent("keyup", keyEventParams),
+      );
+      endPttTimeoutId = null;
+    }, timeoutMs);
+  });
+}
 
-      // Prevent this callback from being called more than necessary (since
-      // body modifications are presumably frequent).
-      ob.disconnect();
+/**
+ * Starts regularly polling Discord local storage to determine if the user is broadcasting their
+ * voice, and notifies the background script when the status changes.
+ */
+function installBroadcastingBadgeHook() {
+  let wasBroadcasting = false;
+
+  setInterval(() => {
+    const isBroadcasting = parseBroadcastingStatus(
+      window.localStorage.getItem("SelectedChannelStore"),
+    );
+
+    if (!isDiscordApp() || isBroadcasting === wasBroadcasting) {
+      return;
     }
-  });
 
-  observer.observe(document.querySelector('body'), {
-    childList: true,
-    subtree: true,
+    chrome.runtime.sendMessage({
+      action: "dswptt_broadcasting",
+      isBroadcasting,
+    });
+    wasBroadcasting = isBroadcasting;
+  }, BROADCASTING_INTERVAL_MS);
+
+  // Never broadcasting once the user navigates away.
+  window.addEventListener("unload", function () {
+    if (!wasBroadcasting) {
+      return;
+    }
+
+    chrome.runtime.sendMessage({
+      action: "dswptt_broadcasting",
+      isBroadcasting: false,
+    });
+    wasBroadcasting = false;
   });
-});
+}
+
+// Actual entrypoint. Run when document is loaded.
+
+installPttHook();
+installBroadcastingBadgeHook();

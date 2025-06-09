@@ -18,6 +18,4 @@ Known issues:
   - PTT can sometimes "bounce" on and off when using the extension. This is a
     side-effect of Chrome's extension shortcut architecture (in which a
     "shortcut pressed" event is provided instead of a "shortcut down/up" event
-    pair). You can click the extension icon to tune your minimum PTT length; a
-    higher length is less susceptible to bouncing, but some amount of bouncing
-    remains unavoidable.
+    pair). Some amount of bouncing appears unavoidable.
