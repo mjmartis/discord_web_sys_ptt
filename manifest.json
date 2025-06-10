@@ -15,10 +15,7 @@
   },
   "content_scripts": [
     {
-      "matches": [
-        "https://discordapp.com/*",
-        "https://discord.com/*"
-      ],
+      "matches": ["https://discordapp.com/*", "https://discord.com/*"],
       "js": ["content.js"],
       "run_at": "document_start"
     }

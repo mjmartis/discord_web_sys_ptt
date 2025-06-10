@@ -5,6 +5,12 @@
 const PTT_KEY_INTERVAL_MS = 3000;
 
 /**
+ * The number of milliseconds to wait between polls of the broadcasting status.
+ * @const {number}
+ */
+const BROADCASTING_INTERVAL_MS = 1000;
+
+/**
  * The initial number of milliseconds to wait before sending a keyup event. Is longer than
  * subsequent waits because the OS or browser briefly "debounces" the shortcut when it is
  * initially pressed.
@@ -155,7 +161,7 @@ function parseBroadcastingStatus(storageValue) {
  *
  * @returns {boolean} True if the current page is broadcasting the user's voice.
  */
-function isBroadcasting() {
+function getIsBroadcasting() {
   return (
     isDiscordApp() && parseBroadcastingStatus(window.localStorage.getItem("SelectedChannelStore"))
   );
@@ -169,13 +175,19 @@ function isBroadcasting() {
 function installPttHook() {
   let endPttTimeoutId = null;
 
-  // Only periodically refresh PTT key information, since command messages are sent hundreds of
-  // times while the shortcut is held.
+  // Only periodically refresh data, since command messages are sent hundreds of times while the
+  // shortcut is held.
   let keyEventParams = getKeyEventParams();
-  setInterval(() => { keyEventParams = getKeyEventParams(); }, PTT_KEY_INTERVAL_MS);
+  setInterval(() => {
+    keyEventParams = getKeyEventParams();
+  }, PTT_KEY_INTERVAL_MS);
+  let isBroadcasting = getIsBroadcasting();
+  setInterval(() => {
+    isBroadcasting = getIsBroadcasting();
+  }, BROADCASTING_INTERVAL_MS);
 
   chrome.runtime.onMessage.addListener((message) => {
-    if (message.action !== "dswptt_ptt_extend" || !isBroadcasting() || keyEventParams == null) {
+    if (message.action !== "dswptt_ptt_extend" || !isBroadcasting || keyEventParams == null) {
       return;
     }
 
@@ -212,7 +224,7 @@ function installPttHook() {
 /** Notifies the background script that speaking has ended when page is navigated away. */
 function installPttStopHook() {
   window.addEventListener("unload", function () {
-    if (!isBroadcasting()) {
+    if (!getIsBroadcasting()) {
       return;
     }
 
